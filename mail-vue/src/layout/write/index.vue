@@ -109,8 +109,7 @@ import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
 import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
-import db from "@/db/db.js";
-import dayjs from "dayjs";
+import {draftDelete, draftSave} from "@/request/draft.js";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
@@ -353,7 +352,7 @@ async function sendEmail() {
 
   emailSend(form, (e) => {
     percent.value = Math.round((e.loaded * 98) / e.total)
-  }).then(emailList => {
+  }).then(async emailList => {
     const email = emailList[0]
     emailList.forEach(item => {
       emailStore.sendScroll?.addItem(item)
@@ -371,10 +370,15 @@ async function sendEmail() {
     addRecipientRecord();
 
     if (form.draftId) {
+      try {
+        await draftDelete([form.draftId]);
+      } catch (error) {
+        console.error('Failed to remove sent draft', error);
+      }
       form.subject = ''
       form.content = ''
       form.receiveEmail = []
-      draftStore.setDraft = {...toRaw(form)}
+      draftStore.refreshList++
     }
 
     show.value = false
@@ -542,7 +546,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
 });
 
-function close() {
+async function close() {
 
   if (selectStatus) openSelect();
 
@@ -551,7 +555,8 @@ function close() {
   }
 
   if (form.draftId) {
-    draftStore.setDraft = {...toRaw(form)}
+    await draftSave(toRaw(form))
+    draftStore.refreshList++
     show.value = false
     resetForm()
     return;
@@ -585,10 +590,7 @@ function close() {
   }).then(async () => {
     const formData = {...toRaw(form)};
     delete formData.draftId
-    delete formData.attachments
-    formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
-    const draftId = await db.value.draft.add({...formData})
-    db.value.att.add({draftId, attachments: toRaw(form.attachments)})
+    await draftSave(formData)
     draftStore.refreshList++
     show.value = false
     await nextTick(() => {

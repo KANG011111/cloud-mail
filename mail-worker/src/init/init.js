@@ -29,8 +29,39 @@ const dbInit = {
 		await this.v2_8DB(c);
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
+		await this.v3_3DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_3DB(c) {
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS draft (
+					draft_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					account_id INTEGER NOT NULL DEFAULT 0,
+					send_email TEXT NOT NULL DEFAULT '',
+					name TEXT NOT NULL DEFAULT '',
+					receive_email TEXT NOT NULL DEFAULT '[]',
+					subject TEXT NOT NULL DEFAULT '',
+					text TEXT NOT NULL DEFAULT '',
+					content TEXT NOT NULL DEFAULT '',
+					send_type TEXT NOT NULL DEFAULT '',
+					email_id INTEGER NOT NULL DEFAULT 0,
+					attachments TEXT NOT NULL DEFAULT '[]',
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					update_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					is_del INTEGER NOT NULL DEFAULT 0
+				)
+			`).run();
+			await c.env.db.prepare(`
+				CREATE INDEX IF NOT EXISTS idx_draft_user_time
+				ON draft(user_id, is_del, draft_id)
+			`).run();
+		} catch (e) {
+			console.warn(`跳過草稿表初始化：${e.message}`);
+		}
 	},
 
 	async v3_0DB(c) {

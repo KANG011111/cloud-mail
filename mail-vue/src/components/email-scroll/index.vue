@@ -811,7 +811,9 @@ function getEmailList(refresh = false) {
 
   if (reqLock) return;
 
-  let emailId = emailList.length > 0 ? emailList.at(-1).emailId : 0;
+  let emailId = emailList.length > 0
+      ? (props.type === 'draft' ? emailList.at(-1).draftId : emailList.at(-1).emailId)
+      : 0;
 
   reqLock = true
 
